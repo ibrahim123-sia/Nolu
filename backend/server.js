@@ -235,7 +235,7 @@ const calculateUserStats = async (userId) => {
       totalDeaths += match.deaths;
       totalAssists += match.assists;
       totalDamage += match.damage;
-      totalRounds += (match.roundsWon + match.roundsLost); // Calculate from roundsWon + roundsLost
+      totalRounds += (match.roundsWon + match.roundsLost);
       if (match.outcome === 'Win') wins++;
     });
     
@@ -315,12 +315,17 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       auth: ['POST /api/signup', 'POST /api/login'],
-      public: ['GET /api/user/:userId', 'GET /api/maps'],
+      public: [
+        'GET /api/user/:userId',
+        'GET /api/search/players?query=searchTerm',
+        'GET /api/maps'
+      ],
       protected: [
         'GET /api/user/me/stats',
         'GET /api/user/me/matches',
         'POST /api/user/me/matches',
         'PUT /api/user/me/privacy',
+        'DELETE /api/user/me/matches/:id',
         'DELETE /api/user/me/stats',
         'DELETE /api/user/me'
       ]
@@ -498,7 +503,63 @@ app.post('/api/login', async (req, res) => {
 // PUBLIC ROUTES
 // ======================
 
-// Search player
+// Search players (NEW ROUTE)
+app.get('/api/search/players', async (req, res) => {
+  try {
+    const { query, limit = 10 } = req.query;
+    
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query must be at least 2 characters long'
+      });
+    }
+    
+    const searchQuery = query.trim();
+    
+    // Search in both userId and username fields for public profiles
+    const players = await User.find({
+      $and: [
+        { isPublic: true },
+        {
+          $or: [
+            { userId: { $regex: searchQuery, $options: 'i' } },
+            { username: { $regex: searchQuery, $options: 'i' } }
+          ]
+        }
+      ]
+    })
+    .select('userId username kdRatio winPercentage totalGames wins kills deaths')
+    .limit(parseInt(limit))
+    .sort({ totalGames: -1 });
+    
+    res.json({
+      success: true,
+      count: players.length,
+      players: players.map(player => ({
+        userId: player.userId,
+        username: player.username,
+        stats: {
+          kdRatio: player.kdRatio,
+          winPercentage: player.winPercentage,
+          totalGames: player.totalGames,
+          wins: player.wins,
+          kills: player.kills,
+          deaths: player.deaths
+        }
+      }))
+    });
+    
+  } catch (error) {
+    console.error('❌ Search players error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching players'
+    });
+  }
+});
+
+// Get player by userId
 app.get('/api/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -519,6 +580,12 @@ app.get('/api/user/:userId', async (req, res) => {
       });
     }
     
+    // Get recent matches
+    const recentMatches = await Match.find({ userId: user._id })
+      .sort({ date: -1 })
+      .limit(5)
+      .select('date outcome map kills deaths assists damage roundsWon roundsLost');
+    
     res.json({
       success: true,
       userId: user.userId,
@@ -535,7 +602,8 @@ app.get('/api/user/:userId', async (req, res) => {
         totalGames: user.totalGames,
         totalRounds: user.totalRounds,
         totalDamage: user.totalDamage
-      }
+      },
+      recentMatches: recentMatches || []
     });
     
   } catch (error) {
@@ -901,7 +969,6 @@ app.delete('/api/user/me', authenticateToken, async (req, res) => {
 // ======================
 // ERROR HANDLING
 // ======================
-
 
 // Global error handler
 app.use((error, req, res, next) => {
