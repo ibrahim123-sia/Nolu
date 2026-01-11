@@ -4,16 +4,13 @@ import axios from 'axios'
 const API_URL = 'https://nolu-lemon.vercel.app/api';
 
 export default function Home() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const [playerId, setPlayerId] = useState('')
   const [playerStats, setPlayerStats] = useState(null)
-  const [searchResults, setSearchResults] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [searchMode, setSearchMode] = useState('exact') // 'exact' or 'search'
 
-  // Search for exact player by ID
-  const searchExactPlayer = async () => {
-    if (!searchTerm.trim()) {
+  const searchPlayer = async () => {
+    if (!playerId.trim()) {
       setError('Please enter a player ID')
       return
     }
@@ -21,11 +18,9 @@ export default function Home() {
     setLoading(true)
     setError('')
     setPlayerStats(null)
-    setSearchResults([])
-    setSearchMode('exact')
 
     try {
-      const response = await axios.get(`${API_URL}/user/${searchTerm.trim()}`)
+      const response = await axios.get(`${API_URL}/user/${playerId.trim()}`)
       setPlayerStats(response.data)
     } catch (err) {
       setError(err.response?.data?.message || 'Player not found or profile is private')
@@ -34,53 +29,9 @@ export default function Home() {
     }
   }
 
-  // Search for players by partial username or ID
-  const searchPlayers = async () => {
-    if (!searchTerm.trim() || searchTerm.trim().length < 2) {
-      setError('Please enter at least 2 characters to search')
-      return
-    }
-
-    setLoading(true)
-    setError('')
-    setPlayerStats(null)
-    setSearchResults([])
-    setSearchMode('search')
-
-    try {
-      const response = await axios.get(`${API_URL}/search/players`, {
-        params: { query: searchTerm.trim() }
-      })
-      setSearchResults(response.data.players)
-      if (response.data.count === 0) {
-        setError('No players found')
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error searching players')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Select a player from search results
-  const selectPlayer = async (userId) => {
-    setLoading(true)
-    setError('')
-    
-    try {
-      const response = await axios.get(`${API_URL}/user/${userId}`)
-      setPlayerStats(response.data)
-      setSearchResults([])
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error loading player')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
-      searchExactPlayer()
+      searchPlayer()
     }
   }
 
@@ -90,34 +41,22 @@ export default function Home() {
       
       <div className="bg-gray-800 rounded-lg p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Search Player Stats</h2>
-        <div className="flex flex-col gap-4 mb-4">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter Player ID or Username"
-              className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div className="flex gap-4">
-            <button
-              onClick={searchExactPlayer}
-              disabled={loading && searchMode === 'exact'}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded font-semibold disabled:opacity-50 transition-colors"
-            >
-              {loading && searchMode === 'exact' ? 'Searching...' : 'Search Exact Player'}
-            </button>
-            <button
-              onClick={searchPlayers}
-              disabled={loading && searchMode === 'search'}
-              className="flex-1 bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded font-semibold disabled:opacity-50 transition-colors"
-            >
-              {loading && searchMode === 'search' ? 'Searching...' : 'Search All Players'}
-            </button>
-          </div>
+        <div className="flex gap-4 mb-4">
+          <input
+            type="text"
+            value={playerId}
+            onChange={(e) => setPlayerId(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter Player ID (e.g., 'nolu', 'player123')"
+            className="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={searchPlayer}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded font-semibold disabled:opacity-50 transition-colors"
+          >
+            {loading ? 'Searching...' : 'Search'}
+          </button>
         </div>
         
         {error && (
@@ -125,37 +64,8 @@ export default function Home() {
             {error}
           </div>
         )}
-
-        {/* Search Results */}
-        {searchResults.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">Search Results ({searchResults.length})</h3>
-            <div className="space-y-2">
-              {searchResults.map((player) => (
-                <div 
-                  key={player.userId}
-                  className="bg-gray-700/50 hover:bg-gray-700 rounded p-3 cursor-pointer transition-colors"
-                  onClick={() => selectPlayer(player.userId)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{player.username}</p>
-                      <p className="text-sm text-gray-400">ID: {player.userId}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm">K/D: <span className="font-medium">{player.stats.kdRatio.toFixed(2)}</span></p>
-                      <p className="text-sm">Win: <span className="font-medium">{player.stats.winPercentage.toFixed(1)}%</span></p>
-                      <p className="text-sm text-gray-400">{player.stats.totalGames} games</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Player Stats Display */}
       {playerStats && (
         <div className="bg-gray-800 rounded-lg p-6">
           <div className="flex justify-between items-start mb-6">
@@ -242,7 +152,7 @@ export default function Home() {
       )}
 
       <div className="mt-12 text-center text-gray-400">
-        <p>Search for players by their exact ID or search by partial username/ID</p>
+        <p>Enter a player ID to view their public stats</p>
         <p className="text-sm mt-2">Sign up to create your own stats dashboard!</p>
       </div>
     </div>
