@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
 // Update this URL for production
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-backend-domain.vercel.app/api' 
-  : 'http://localhost:5000/api';
+const API_URL ='https://nolu-lemon.vercel.app/api';
 
 export default function AddMatchStats() {
   const [formData, setFormData] = useState({

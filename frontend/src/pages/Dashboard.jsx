@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 
-const API_URL = 'http://localhost:5000/api'
+const API_URL ='https://nolu-lemon.vercel.app/api';
 
 export default function Dashboard({ user, onLogout }) {
   const [stats, setStats] = useState(null)
