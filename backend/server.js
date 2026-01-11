@@ -17,7 +17,7 @@ app.use(
 app.use(express.json());
 
 // MongoDB Connection (for Vercel deployment)
-const MONGODB_URI = process.env.MONGODB_URI|| 'mongodb://localhost:27017';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   throw new Error("❌ MONGODB_URI is not defined in environment variables");
